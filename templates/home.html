@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard-header">
+        <h1>Dashboard</h1>
+        <p class="date">Terakhir diperbarui: <span id="updateDate">13 November 2024</span></p>
+    </div>
+
+    <div class="dashboard-content">
+        <div class="data-card">
+            <h3>Suhu Maksimal</h3>
+            <p id="suhumax"></p>
+        </div>
+        <div class="data-card">
+            <h3>Suhu Minimal</h3>
+            <p id="suhumin"></p>
+        </div>
+        <div class="data-card">
+            <h3>Rata - Rata Suhu</h3>
+            <p id="suhurata2"></p>
+        </div>
+
+        <div class="chart-card">
+            <h3>Suhu & Kelembapan</h3>
+            <canvas id="temperatureHumidityChart"></canvas>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+
+    <script>
+        // Fetch data from Flask backend
+        async function fetchSensorData() {
+            try {
+                const response = await fetch('/get_data');
+                const data = await response.json();
+
+                if (data.length > 0) {
+                    // Get the most recent data (you can adjust this logic)
+                    const latestData = data[0];  // Or loop through the array if you need to show more
+
+                    // Update the data cards
+                    document.getElementById('suhumax').textContent = latestData.suhumax || 'N/A';
+                    document.getElementById('suhumin').textContent = latestData.suhumin || 'N/A';
+                    document.getElementById('suhurata2').textContent = latestData.suhurata2 || 'N/A';
+
+                    // Prepare data for the chart
+                    const temperatureData = latestData.nilaisuhuhumid.map(val => val.suhu);
+                    const humidityData = latestData.nilaisuhuhumid.map(val => val.humid);
+                    const timestamps = latestData.nilaisuhuhumid.map(val => new Date(val.timestamp).toLocaleTimeString());
+
+                    updateChart(timestamps, temperatureData, humidityData);
+                } else {
+                    console.log('No data found');
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        // Function to update the chart with temperature and humidity data
+        function updateChart(timestamps, temperatureData, humidityData) {
+            const ctx = document.getElementById('temperatureHumidityChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timestamps,
+                    datasets: [
+                        {
+                            label: 'Temperature (°C)',
+                            data: temperatureData,
+                            borderColor: '#FF6384',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            fill: false
+                        },
+                        {
+                            label: 'Humidity (%)',
+                            data: humidityData,
+                            borderColor: '#36A2EB',
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Values'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Load data when the page is loaded
+        document.addEventListener('DOMContentLoaded', fetchSensorData);
+    </script>
+</body>
+</html>
